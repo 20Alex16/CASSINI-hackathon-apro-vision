@@ -1,0 +1,11 @@
+from fastapi import FastAPI
+from app.core.database import Base, engine
+from app.api.v1.router import api_router
+
+import app.models
+
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(title="Apro-Vision API")
+
+app.include_router(api_router, prefix="/api/v1")
