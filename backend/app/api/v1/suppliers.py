@@ -1,21 +1,23 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.models.client_company import ClientCompany
 from app.models.supplier import Supplier
-from app.api.v1.auth import get_current_client_company
 
 router = APIRouter(prefix="/suppliers", tags=["Suppliers"])
 
 
 @router.get("")
-def get_suppliers(
-    db: Session = Depends(get_db),
-    current_company=Depends(get_current_client_company)
-):
+def get_suppliers(db: Session = Depends(get_db)):
+    company = db.query(ClientCompany).first()
+
+    if company is None:
+        raise HTTPException(status_code=404, detail="No client company found")
+
     suppliers = (
         db.query(Supplier)
-        .filter(Supplier.client_company_id == current_company.id)
+        .filter(Supplier.client_company_id == company.id)
         .all()
     )
 

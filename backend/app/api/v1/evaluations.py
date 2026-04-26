@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.models.client_company import ClientCompany
 from app.models.supplier import Supplier
 from app.models.supplier_location import SupplierLocation
 from app.models.location_evaluation import LocationEvaluation
@@ -13,8 +14,6 @@ from app.schemas.evaluation import (
     EvaluationChartPoint,
 )
 from app.services.satellite_evaluation_service import SatelliteEvaluationService
-from app.api.v1.auth import get_current_client_company
-
 
 router = APIRouter(
     prefix="/suppliers",
@@ -27,14 +26,18 @@ satellite_service = SatelliteEvaluationService()
 def get_owned_location(
     supplier_id: str,
     location_id: str,
-    db: Session,
-    current_company
+    db: Session
 ):
+    company = db.query(ClientCompany).first()
+
+    if company is None:
+        raise HTTPException(status_code=404, detail="No client company found")
+
     supplier = (
         db.query(Supplier)
         .filter(
             Supplier.id == supplier_id,
-            Supplier.client_company_id == current_company.id
+            Supplier.client_company_id == company.id
         )
         .first()
     )
@@ -65,14 +68,12 @@ def create_location_evaluation(
     supplier_id: str,
     location_id: str,
     payload: EvaluationCreate,
-    db: Session = Depends(get_db),
-    current_company=Depends(get_current_client_company)
+    db: Session = Depends(get_db)
 ):
     _, location = get_owned_location(
         supplier_id=supplier_id,
         location_id=location_id,
-        db=db,
-        current_company=current_company
+        db=db
     )
 
     result = satellite_service.evaluate_location(
@@ -133,14 +134,12 @@ def create_timeseries_evaluation(
     supplier_id: str,
     location_id: str,
     payload: EvaluationCreate,
-    db: Session = Depends(get_db),
-    current_company=Depends(get_current_client_company)
+    db: Session = Depends(get_db)
 ):
     _, location = get_owned_location(
         supplier_id=supplier_id,
         location_id=location_id,
-        db=db,
-        current_company=current_company
+        db=db
     )
 
     current_date = payload.start_date
@@ -240,14 +239,12 @@ def create_timeseries_evaluation(
 def get_location_evaluations(
     supplier_id: str,
     location_id: str,
-    db: Session = Depends(get_db),
-    current_company=Depends(get_current_client_company)
+    db: Session = Depends(get_db)
 ):
     _, location = get_owned_location(
         supplier_id=supplier_id,
         location_id=location_id,
-        db=db,
-        current_company=current_company
+        db=db
     )
 
     evaluations = (
@@ -267,14 +264,12 @@ def get_location_evaluations(
 def get_latest_location_evaluation(
     supplier_id: str,
     location_id: str,
-    db: Session = Depends(get_db),
-    current_company=Depends(get_current_client_company)
+    db: Session = Depends(get_db)
 ):
     _, location = get_owned_location(
         supplier_id=supplier_id,
         location_id=location_id,
-        db=db,
-        current_company=current_company
+        db=db
     )
 
     evaluation = (
@@ -297,14 +292,12 @@ def get_latest_location_evaluation(
 def get_location_evaluation_chart(
     supplier_id: str,
     location_id: str,
-    db: Session = Depends(get_db),
-    current_company=Depends(get_current_client_company)
+    db: Session = Depends(get_db)
 ):
     _, location = get_owned_location(
         supplier_id=supplier_id,
         location_id=location_id,
-        db=db,
-        current_company=current_company
+        db=db
     )
 
     evaluations = (
